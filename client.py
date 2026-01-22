@@ -7,23 +7,29 @@ import json
 import pyaudio
 import wave
 import time
+import threading
+import numpy as np
+import sounddevice as sd
 
 # Configurazione
-RATE = 44100
-CHUNK = 1024
+AUDIO_RATE = 44100
+AUDIO_BLOCK = 1024
 CHANNELS = 1
 FORMAT = pyaudio.paInt16
 
 NUM_LEDS = 64
 LED_PIN = board.D18
-UDP_PORT = 5005
+UDP_PORT = 5006
 LATENCY_CORRECTION = 0.0  # aggiusta qui se noti ritardi
 
 # Setup
-pixels = neopixel.NeoPixel(LED_PIN, NUM_LEDS)
+pixels = neopixel.NeoPixel(LED_PIN, NUM_LEDS, brightness=0.5, auto_write=False)
 click = sa.WaveObject.from_wave_file("click.wav")
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(("0.0.0.0", UDP_PORT))
+
+audio_energy = [0, 0, 0]  # bass, mid, high
+lock = threading.Lock()
 
 # Setup audio record
 #audio = pyaudio.PyAudio()
@@ -44,17 +50,57 @@ filename = f"audio/recording_{timestamp}.wav"
 
 frames = []
 
+# ================= AUDIO FFT =================
+def audio_callback(indata, frames, time_info, status):
+    global audio_energy
+
+    samples = indata[:, 0]
+    fft = np.abs(np.fft.rfft(samples))
+    freqs = np.fft.rfftfreq(len(samples), 1 / AUDIO_RATE)
+
+    bass = np.mean(fft[(freqs > 20) & (freqs < 250)])
+    mid  = np.mean(fft[(freqs > 250) & (freqs < 2000)])
+    high = np.mean(fft[(freqs > 2000) & (freqs < 8000)])
+
+    with lock:
+        audio_energy = [bass, mid, high]
+
+def start_audio_stream():
+    with sd.InputStream(
+        channels=1,
+        samplerate=AUDIO_RATE,
+        blocksize=AUDIO_BLOCK,
+        callback=audio_callback
+    ):
+        while True:
+            time.sleep(0.1)
+
+# ================= LED EFFECT =================
+def audio_reactive_leds():
+    while True:
+        with lock:
+            b, m, h = audio_energy
+
+        # normalizzazione semplice
+        r = min(int(b / 5000), 255)
+        g = min(int(m / 3000), 255)
+        b = min(int(h / 2000), 255)
+
+        for i in range(NUM_LEDS):
+            pixels[i] = (r, g, b)
+
+        pixels.show()
+        time.sleep(0.03)
+
+# ================= BEAT EFFECT =================
 def flash_leds():
-    #time.sleep(0.2)
-    pixels.fill((0, 255, 0))
+    pixels.fill((255, 255, 255))
     pixels.show()
-    print("pixel 0:")
-    print(pixels[0])
-    time.sleep(0.2)
-    pixels.fill((255, 0, 0))
-    pixels.show()
-    print("pixel 1:")
-    print(pixels[0])
+    time.sleep(0.05)
+
+# ================= THREAD START =================
+threading.Thread(target=start_audio_stream, daemon=True).start()
+threading.Thread(target=audio_reactive_leds, daemon=True).start()
 
 print("Client in ascolto con timestamp...")
 
@@ -67,6 +113,7 @@ while True:
             flash_leds()
             ts = msg["timestamp"]
             delay = ts - time.time() - LATENCY_CORRECTION
+            
             if delay > 0:
                 time.sleep(delay)
             else:
