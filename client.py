@@ -67,13 +67,13 @@ def audio_callback(indata, frames, time_info, status):
 
 def start_audio_stream():
     with sd.InputStream(
-        channels=1,
+	channels=1,
         samplerate=AUDIO_RATE,
         blocksize=AUDIO_BLOCK,
         callback=audio_callback
     ):
-        while True:
-            time.sleep(0.1)
+         while True:
+             audio_reactive_leds()
 
 # ================= LED EFFECT =================
 def audio_reactive_leds():
@@ -99,14 +99,14 @@ def flash_leds():
     time.sleep(0.05)
 
 # ================= THREAD START =================
-threading.Thread(target=start_audio_stream, daemon=True).start()
-threading.Thread(target=audio_reactive_leds, daemon=True).start()
+start_audio_stream()
 
 print("Client in ascolto con timestamp...")
 
 while True:
     data, addr = sock.recvfrom(1024)
     #flash_leds()
+    #audio_reactive_leds()
     try:
         msg = json.loads(data.decode())
         if msg.get("command") == "BEAT":
