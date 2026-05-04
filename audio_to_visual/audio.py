@@ -3,7 +3,7 @@ import sounddevice as sd
 
 class AudioInput:
 
-    def __init__(self, device="plughw:0,0", rate=44100, block=1024):
+    def __init__(self, device="hw:0,0", rate=44100, block=1024):
         self.device = device
         self.rate = rate
         self.block = block
@@ -30,3 +30,5 @@ class AudioInput:
             callback=self.callback
         )
         self.stream.start()
+
+        

@@ -5,7 +5,7 @@ from .utils import SignalProcessor
 
 class AudioVisualEngine:
 
-    def __init__(self, num_leds=10, device="plughw:0,0"):
+    def __init__(self, num_leds=10, device="hw:0,0"):
         self.audio = AudioInput(device=device)
         self.ai = AIEngine()
         self.visual = VisualEngine(num_leds)
