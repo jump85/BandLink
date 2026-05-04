@@ -10,13 +10,14 @@ import time
 import threading
 import numpy as np
 import sounddevice as sd
-from .engine import AudioVisualEngine
+from audio_to_visual import AudioVisualEngine
 
 # Configurazione
 AUDIO_RATE = 44100
 AUDIO_BLOCK = 1024
 CHANNELS = 1
 FORMAT = pyaudio.paInt16
+
 
 NUM_LEDS = 64
 LED_PIN = board.D18
@@ -30,7 +31,7 @@ engine = AudioVisualEngine(NUM_LEDS)
 click = sa.WaveObject.from_wave_file("click.wav")
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(("0.0.0.0", UDP_PORT))
-NUM_LEDS = 10
+
 
 audio_energy = [0, 0, 0]  # bass, mid, high
 lock = threading.Lock()
