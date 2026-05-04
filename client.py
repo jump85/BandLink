@@ -10,6 +10,7 @@ import time
 import threading
 import numpy as np
 import sounddevice as sd
+from .engine import AudioVisualEngine
 
 # Configurazione
 AUDIO_RATE = 44100
@@ -24,9 +25,12 @@ LATENCY_CORRECTION = 0.0  # aggiusta qui se noti ritardi
 
 # Setup
 pixels = neopixel.NeoPixel(LED_PIN, NUM_LEDS, brightness=0.5, auto_write=False)
+engine = AudioVisualEngine(NUM_LEDS)
+
 click = sa.WaveObject.from_wave_file("click.wav")
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(("0.0.0.0", UDP_PORT))
+NUM_LEDS = 10
 
 audio_energy = [0, 0, 0]  # bass, mid, high
 lock = threading.Lock()
@@ -77,19 +81,16 @@ def start_audio_stream():
 
 # ================= LED EFFECT =================
 def audio_reactive_leds():
+    engine.start()
     while True:
-        with lock:
-            b, m, h = audio_energy
+        frame, beat, mode = engine.get_frame()
 
-        # normalizzazione semplice
-        r = min(int(b / 5000), 255)
-        g = min(int(m / 3000), 255)
-        b = min(int(h / 2000), 255)
-
-        for i in range(NUM_LEDS):
-            pixels[i] = (r, g, b)
+        for i, c in enumerate(frame):
+            pixels[i] = c
 
         pixels.show()
+        print(mode, beat)
+
         time.sleep(0.03)
 
 # ================= BEAT EFFECT =================
@@ -99,7 +100,8 @@ def flash_leds():
     time.sleep(0.05)
 
 # ================= THREAD START =================
-start_audio_stream()
+#start_audio_stream()
+audio_reactive_leds()
 
 print("Client in ascolto con timestamp...")
 
