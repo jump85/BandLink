@@ -22,7 +22,12 @@ FORMAT = pyaudio.paInt16
 NUM_LEDS = 64
 LED_PIN = board.D18
 UDP_PORT = 5006
+UDP_SERVER_IP = "192.168.178.10"
+UDP_SERVER_PORT = 9000
+
 LATENCY_CORRECTION = 0.0  # aggiusta qui se noti ritardi
+
+sequence = 0
 
 # Setup
 pixels = neopixel.NeoPixel(LED_PIN, NUM_LEDS, brightness=0.5, auto_write=False)
@@ -55,10 +60,30 @@ filename = f"audio/recording_{timestamp}.wav"
 
 frames = []
 
-# ================= AUDIO FFT =================
+# ================= AUDIO FFT & STREAMING =================
 def audio_callback(indata, frames, time_info, status):
     global audio_energy
+    global sequence
 
+    # STREAMING PART
+
+    timestamp = time.time()
+
+    pcm = indata.tobytes()
+
+    header = struct.pack(
+        "IdH",
+        sequence,
+        timestamp,
+        len(pcm)
+    )
+
+    packet = header + pcm
+
+    sock.sendto(packet, (UDP_SERVER_IP, UDP_SERVER_PORT))
+
+    sequence += 1
+    # FFT PART
     samples = indata[:, 0]
     fft = np.abs(np.fft.rfft(samples))
     freqs = np.fft.rfftfreq(len(samples), 1 / AUDIO_RATE)
@@ -101,8 +126,8 @@ def flash_leds():
     time.sleep(0.05)
 
 # ================= THREAD START =================
-#start_audio_stream()
-audio_reactive_leds()
+engine.start()
+#audio_reactive_leds()
 
 print("Client in ascolto con timestamp...")
 
