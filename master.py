@@ -19,11 +19,11 @@ start_time = time.time()
 #start_recording()
 print(sd.query_devices())
 stream = sd.OutputStream(
-    samplerate=48000,
+    samplerate=44100,
     channels=2,
     dtype='int16',
-    blocksize=512,
-    device=4
+    blocksize=1024,
+    device=2
 )
 
 stream.start()
