@@ -17,13 +17,13 @@ sock.bind(("0.0.0.0", UDP_SERVER_PORT))
 
 start_time = time.time()
 #start_recording()
-
-stream = sd.InputStream(
+print(sd.query_devices())
+stream = sd.OutputStream(
     samplerate=48000,
-    channels=1,
+    channels=2,
     dtype='int16',
     blocksize=512,
-    device="hw:0,0"
+    device=4
 )
 
 stream.start()
