@@ -20,7 +20,7 @@ start_time = time.time()
 print(sd.query_devices())
 stream = sd.OutputStream(
     samplerate=44100,
-    channels=2,
+    channels=1,
     dtype='int16',
     blocksize=1024,
     device=2
@@ -51,8 +51,7 @@ while True:
     }
     sock.sendto(json.dumps(msg).encode(), (UDP_IP, UDP_PORT))
     time.sleep(INTERVAL)
-    if (now - start_time > 10):
-        stop_recording()
+
 
 # Start recording
 def start_recording():
