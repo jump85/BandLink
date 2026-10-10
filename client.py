@@ -1,5 +1,5 @@
 import socket
-import simpleaudio as sa
+import pygame
 import time
 import board
 import neopixel
@@ -13,11 +13,12 @@ import sounddevice as sd
 from audio_to_visual import AudioVisualEngine
 
 # Configurazione
-AUDIO_RATE = 44100
+DEVICE_ID = "hw:1,0"
+AUDIO_RATE = 48000
 AUDIO_BLOCK = 1024
 CHANNELS = 1
 FORMAT = pyaudio.paInt16
-
+CHUNK = 1024
 
 NUM_LEDS = 64
 LED_PIN = board.D18
@@ -26,9 +27,11 @@ LATENCY_CORRECTION = 0.0  # aggiusta qui se noti ritardi
 
 # Setup
 pixels = neopixel.NeoPixel(LED_PIN, NUM_LEDS, brightness=0.5, auto_write=False)
-engine = AudioVisualEngine(NUM_LEDS)
+engine = AudioVisualEngine(NUM_LEDS,DEVICE_ID)
 
-click = sa.WaveObject.from_wave_file("click.wav")
+pygame.mixer.init()
+click = pygame.mixer.Sound("click.wav")
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(("0.0.0.0", UDP_PORT))
 
@@ -37,19 +40,29 @@ audio_energy = [0, 0, 0]  # bass, mid, high
 lock = threading.Lock()
 
 # Setup audio record
-#audio = pyaudio.PyAudio()
-#for i in range(audio.get_device_count()):
-#    info = audio.get_device_info_by_index(i)
-#    print(i, info.get('name'), "in:", info.get('maxInputChannels'))
-#p.terminate()
-#stream = audio.open(
-#    format=FORMAT,
-#    channels=CHANNELS,
-#    rate=RATE,
-#    input=True,
-#    frames_per_buffer=CHUNK,
-#    input_device_index=0   # Sabrent
+audio = pyaudio.PyAudio()
+for i in range(audio.get_device_count()):
+    info = audio.get_device_info_by_index(i)
+    print(i, info.get('name'), "in:", info.get('maxInputChannels'))
+
+
+stream = audio.open(
+    format=FORMAT,
+    channels=CHANNELS,
+    rate=AUDIO_RATE,
+    input=True,
+    frames_per_buffer=CHUNK,
+    input_device_index=1   # Sabrent
+)
+
+#stream = sd.OutputStream(
+#    samplerate=44100,
+#    channels=1,
+#    dtype='int16',
+#    blocksize=1024,
+#    device=DEVICE_ID
 #)
+
 timestamp = time.strftime("%Y%m%d_%H%M%S")
 filename = f"audio/recording_{timestamp}.wav"
 
@@ -71,8 +84,8 @@ def audio_callback(indata, frames, time_info, status):
         audio_energy = [bass, mid, high]
 
 def start_audio_stream():
-    with sd.InputStream(
-	channels=1,
+    with sd.inputStream(
+        channels=1,
         samplerate=AUDIO_RATE,
         blocksize=AUDIO_BLOCK,
         callback=audio_callback
@@ -98,11 +111,13 @@ def audio_reactive_leds():
 def flash_leds():
     pixels.fill((255, 255, 255))
     pixels.show()
-    time.sleep(0.05)
+    time.sleep(0.2)
+    pixels.fill((0, 0, 0))
+    pixels.show()
 
 # ================= THREAD START =================
-#start_audio_stream()
-audio_reactive_leds()
+
+#audio_reactive_leds()
 
 print("Client in ascolto con timestamp...")
 
@@ -113,7 +128,6 @@ while True:
     try:
         msg = json.loads(data.decode())
         if msg.get("command") == "BEAT":
-            flash_leds()
             ts = msg["timestamp"]
             delay = ts - time.time() - LATENCY_CORRECTION
             
@@ -122,7 +136,7 @@ while True:
             else:
                 print(f"ATTENZIONE: ritardo negativo di {-delay:.3f} s")
             print(f"Beat! ({time.time():.3f})")
-            #click.play()
+            click.play()
             #flash_leds()
         if msg.get("command") == "RECORD_START":
             data = stream.read(CHUNK)
@@ -137,7 +151,7 @@ while True:
             wf = wave.open(filename, 'wb')
             wf.setnchannels(CHANNELS)
             wf.setsampwidth(audio.get_sample_size(FORMAT))
-            wf.setframerate(RATE)
+            wf.setframerate(AUDIO_RATE)
             wf.writeframes(b''.join(frames))
             wf.close()
     except Exception as e:
