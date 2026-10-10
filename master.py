@@ -3,13 +3,32 @@ import time
 import json
 
 UDP_IP = "255.255.255.255"
-UDP_PORT = 5005
+UDP_PORT = 5006
 BPM = 120
 INTERVAL = 60 / BPM
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
+
+
+# Start recording
+def start_recording():
+    print("Start recording...")
+    msg = {
+        "command": "RECORD_START"
+    }
+    sock.sendto(json.dumps(msg).encode(), (UDP_IP, UDP_PORT))
+
+# Stop recording
+def stop_recording():
+    print("Stop recording...")
+    msg = {
+        "command": "RECORD_STOP"
+    }
+    sock.sendto(json.dumps(msg).encode(), (UDP_IP, UDP_PORT))
+
+# Main loop
 start_time = time.time()
 start_recording()
 
@@ -27,18 +46,4 @@ while True:
     if (now - start_time > 10):
         stop_recording()
 
-# Start recording
-def start_recording():
-    print("Start recording...")
-    msg = {
-        "command": "RECORD_START"
-    }
-    sock.sendto(json.dumps(msg).encode(), (UDP_IP, UDP_PORT))
 
-# Stop recording
-def stop_recording():
-    print("Stop recording...")
-    msg = {
-        "command": "RECORD_STOP"
-    }
-    sock.sendto(json.dumps(msg).encode(), (UDP_IP, UDP_PORT))
