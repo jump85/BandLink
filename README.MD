@@ -3,7 +3,7 @@
 
 sudo apt update
 
-sudo apt-get install -y python3-dev libasound2-dev portaudio19-dev python3-rpi.gpio pygame
+sudo apt-get install -y python3-dev libasound2-dev portaudio19-dev python3-rpi.gpio pygame libopenblas0
 
 python -m pip install adafruit-blinka adafruit-circuitpython-neopixel rpi_ws281x
 
